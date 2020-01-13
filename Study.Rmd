@@ -1,0 +1,620 @@
+---
+title: "Complete OverView"
+author: "Andrew Maloney"
+date: "1/8/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r eval=FALSE}
+# Loading Packages
+library(dplyr)
+library(bulletxtrctr)
+library(x3ptools)
+library(ggplot2)
+library(readr)
+library(purrr)
+library(stringr)
+library(tidyr)
+```
+
+# This will be a complete description of
+- Scripts for Feature Extraction
+- Package Information
+- Session_Info
+
+Data 
+- Which Scans are excluded
+- meta file for data source(s)
+
+- Examination of CMS feature extraction from bulletxtrctr
+
+
+We are using three separate data sources: Hamby_173 & Hamby_252, Phoenix, and Houston Set Rescan
+
+## Scripts for Feature Extraction
+
+For Feature Extraction we are currently using the bulletxtrctr package.  Given a scanned bullet land in an x3p file format, we can extract many important features from two aligned signatures.
+
+A typical pipeline would be something like this:
+
+1. Read in bullets from a data source
+2. Make sure the orientation is the same/correct for all scanned bullets
+3. Obtain the Crosssections
+4. Obtain CrossCuts
+5. Correctly identify the groove cutoffs for each scanned bullet
+6. Obtain the Signatures of each scanned bullet
+7. Align signatures between each bullet and perform feature extraction
+
+#### 1. Read in bullets from a datasource
+The reading of a scanned bullet's x3p file can be done multiple ways, it really comes down to how you want your starting data to be labeled.
+
+Hamby(173 & 252)
+
+For Hamby 173 & 252 we are using the stringr, dplyr, and x3ptools packages to read and format the data.
+
+* The files are in the form .x3p
+* The list should recurse into directories(recursive = TRUE)
+* The directory path is prepended(full.names = TRUE)
+* The path is stored and read as x3p(read_x3p)
+
+
+#### 2. Orientation
+Using the x3ptools package we are able to adjust the orientation of the scanned bullets to meet our needs
+
+* The x3p information is converted to microns from meters(x3p_m_to_mum(.))
+* We define the y-axis in reference to the bottom right corner(y_flip_x3p())
+* An x3p object may need to be rotated inorder to conform to ISO standards, like in the case of hamby 252.
+
+[default parameters] -> rotate_x3p(x3p_object, angle = 90, 180, 270, -90, -180, -270)
+
+```{r eval=FALSE}
+
+df <- tibble(path = list.files(path = file.path(data_dir, "Hamby_173"), 
+                               pattern = ".x3p", recursive = T, 
+                               full.names = T)) %>% 
+  mutate(Barrel = str_extract(path, "(Unknown|Barrel)\\d{0,2}") %>% 
+           str_remove("Barrel"), 
+         Bullet = str_extract(path, "Bullet[12A-Z]") %>% 
+           str_remove("Bullet"),
+         Land = str_extract(path, "land\\d{1}") %>% 
+           str_remove("land")) %>% 
+  mutate(Set = "Hamby173") %>%
+  mutate(x3p = map(path, read_x3p)) %>%
+  mutate(x3p = map(x3p, ~x3p_m_to_mum(.) %>% y_flip_x3p()))
+
+
+
+df2 <- tibble(path = list.files(path = file.path(data_dir, "Hamby_252"), 
+                                pattern = ".x3p", recursive = T, 
+                                full.names = T)) %>% 
+  mutate(Barrel = str_extract(path, "(Unknown|Barrel)\\d{0,2}") %>% 
+           str_remove("Barrel"), 
+         Bullet = str_extract(path, "Bullet[12A-Z]") %>% 
+           str_remove("Bullet"), 
+         Land = str_extract(path, "Bullet [12A-Z]-[123456]") %>% 
+           str_remove("Bullet [12A-Z]-")) %>% 
+  mutate(Set = "Hamby252") %>%
+  mutate(x3p = map(path,read_x3p))  %>%
+  # Adjust orientation
+  mutate(x3p = map(x3p, ~x3p_m_to_mum(.) %>% rotate_x3p(angle = -90) %>% y_flip_x3p()))
+
+```
+
+
+#### 3. Obtain Cross Sections
+We can use the bulletxtrctr and purrr packages to obtain cross sections
+
+x3p_crosscut_optimize allows us to identify a cross section that is close to the heal of the bullet and does not suffer from defects(break-off, pitting, ... , etc)
+
+* distance: distance between crossections for comparison
+* ylimits: manually assign where to check for reliable cross-sections
+* minccf: min value of cross-correlation for a region
+* span: span of loess smooth 
+* percent_missing: how much of the section is damaged or missing to be allowed for reliable cross-section
+
+[default parameters] -> x3p_crosscut_optimize(x3p_object, distance = 25, ylimits = c(50, NA), minccf = 0.9, span = 0.03, percent_missing = 50)
+
+We applied a smaller value for percent_missing which is a more strict constraint.  The idea behind this was we would get a region more to our liking.
+
+
+```{r eval=FALSE}
+# Cross Sections
+
+hamby <- hamby %>%
+  mutate(CrossSection = 
+           map_dbl(x3p, x3p_crosscut_optimize, minccf = 0.9, span = 0.3, percent_missing = 25))
+
+```
+
+
+#### 4. Obtain Cross Cuts
+Using the x3p_crosscut function from bulletxtrctr we are able to read a crosscut given an x3p object and a cross section
+
+* y: level of crosscut 
+* range: range to be extracted
+
+[default parameters] -> x3p_crosscut(x3p_object, y = NULL, range = 1e-05)
+
+We are using the standard defaults for Hamby 173 & 252
+
+
+```{r eval=FALSE}
+
+hamby <- hamby %>% 
+  mutate(CrossCut = map2(.x = x3p, .y = CrossSection, .f = x3p_crosscut))
+
+```
+
+
+#### 5. Obtain Grooves and correctly identify groove cut offs
+Using the cc_locate_grooves function from bulletxtrctr we can find the grooves for a Barrel-Bullet-Land scan.
+
+* ccdata: our dataframe of the crosscuts
+* method: method for identifying grooves (rollapply, quadratic, middle, logisticlegacy, lassobasic, lassofull, bcp)
+* smoothfactor: smoothing window
+* adjust: adjust grooves
+* groove_cutoff: cutoff for grooves
+* mean_left: average left groove
+* mean_right: average of right groove
+* mean_window: window around left & right grooves
+* return_plot: return a plot of the grooves that are extracted
+
+[default parameters] -> cc_locate_grooves(ccdata, method = "rollapply", smoothfactor = 15, adjust = 10, groove_cutoff = 400, mean_left = NULL, mean_right = NULL, mean_window = 100, return_plot = FALSE)
+
+Currently this function is still not performing to a standard we are comfortable with so we are using a interactive shiny app to correct the mistakes of this function.
+
+
+```{r eval=FALSE}
+
+#Grooves
+hamby173 <- hamby173 %>% 
+    mutate(Grooves = CrossCut %>% 
+             map(.f = cc_locate_grooves, 
+                        method = "rollapply", smoothfactor = 15, return_plot = T))  # use plot so that the shiny app works...
+
+hamby252 <- hamby252 %>% 
+    mutate(Grooves = CrossCut %>% 
+             map(.f = cc_locate_grooves, 
+                        method = "rollapply", smoothfactor = 15, return_plot = T))  # use plot so that the shiny app works...
+
+```
+
+
+#### 6. Obtain the signatures
+After we have correctly identified the groove cutoffs we are able to extract the signature information.
+Using the cc_get_signature function from bulletxtrctr
+
+* ccdata: Crosscut data
+* grooves: Grooves data
+* span1: 
+* span2:
+
+[default parameters] -> cc_get_signature(ccdata, grooves, span1 = 0.75, span2 = 0.03)
+
+We are using the current defaults
+
+```{r eval=FALSE}
+
+hamby173 <- hamby173 %>% 
+  mutate(Signatures = map2(.x = CrossCut, .y = Grooves, .f = cc_get_signature, span = 0.75, span2 = .03))
+
+hamby252 <- hamby252 %>% 
+  mutate(Signatures = map2(.x = CrossCut, .y = Grooves, .f = cc_get_signature, span = 0.75, span2 = .03))
+
+```
+
+
+#### 7. Feature Extraction
+We are now able to perform feature extraction given two aligned signatures.
+
+* we can align two signatures(sig1, sig2) using sig_align function from bulletxtrctr, sig_align only uses each group of 2 signatures.
+* Next we find the CMS between two signatures using sig_cms_max function from bulletxtrctr.
+
+[default parameters] -> sig_cms_max(alignment_data, span = 35)
+
+* Once we have obtained are aligned and striae data we are able to extract many different features.
+* We extract the rest of these features using the extract_features_all function from bulletxtrctr
+* there is also a legacy version of the extract_features_all function
+
+[default parameters] -> extract_features_all(aligned, striae, resolution, tmpfile = NULL)
+
+
+```{r eval=FALSE}
+plan(multicore)
+
+get_sig <- function(data) {
+  map(data$Signatures, "sig")
+}
+comparisons_173 <- comparisons_173 %>%
+  mutate(sig1 = map(Bullet1_data, get_sig), sig2 = future_map(Bullet2_data, get_sig))
+
+comparisons_173 <- comparisons_173 %>%
+  mutate(Aligned = map2(sig1, sig2, ~sig_align(unlist(.x), unlist(.y)))) # Getting Aligned signatures
+
+# Get striae
+comparisons_173 <- comparisons_173 %>%
+  mutate(Striae = map(Aligned, sig_cms_max)) # Obtaining Striae
+
+saveRDS(select(comparisons_173, -Bullet1_data, -Bullet2_data), file = "Hamby_173Comparisons.rda")
+
+comparisons_173 <- comparisons_173 %>% 
+  select(-Bullet1_data, -Bullet2_data)
+
+get_sig <- function(data) {
+  map(data$Signatures, "sig")
+}
+comparisons_252 <- comparisons_252 %>%
+  mutate(sig1 = map(Bullet1_data, get_sig), sig2 = future_map(Bullet2_data, get_sig))
+
+comparisons_252 <- comparisons_252 %>%
+  mutate(Aligned = map2(sig1, sig2, ~sig_align(unlist(.x), unlist(.y)))) # Getting Aligned signatures
+
+# Get striae
+comparisons_252 <- comparisons_252 %>%
+  mutate(Striae = map(Aligned, sig_cms_max)) # Obtaining Striae
+
+saveRDS(select(comparisons_252, -Bullet1_data, -Bullet2_data), file = "Hamby_252Comparisons.rda")
+
+comparisons_252 <- comparisons_252 %>% 
+  select(-Bullet1_data, -Bullet2_data)
+
+
+#--------------------------------------------------------------------------------------------------#
+
+comparisons_173 <- comparisons_173 %>% 
+  mutate(features = map2(Aligned, Striae, extract_features_all, resolution = 1.5625)) #ObtainingFeatures
+
+comparisons_173 <- comparisons_173 %>% 
+  mutate(Legacy_Features = map(Striae, extract_features_all_legacy, resolution = 1.5625)) # Obtaining feature leacy
+
+comparisons_legacy_173 <- comparisons_173 %>% 
+  select(-features) %>%
+  tidyr::unnest(Legacy_Features) # Extracting feature legacy
+
+comparisons_173 <- comparisons_173 %>%
+  select(-Legacy_Features) %>%
+  tidyr::unnest(features)
+
+comparisons_252 <- comparisons_252 %>% 
+  mutate(features = map2(Aligned, Striae, extract_features_all, resolution = 1.5625)) #ObtainingFeatures
+
+comparisons_252 <- comparisons_252 %>% 
+  mutate(Legacy_Features = map(Striae, extract_features_all_legacy, resolution = 1.5625)) # Obtaining feature leacy
+
+comparisons_legacy_252 <- comparisons_252 %>% 
+  select(-features) %>%
+  tidyr::unnest(Legacy_Features) # Extracting feature legacy
+
+comparisons_252 <- comparisons_252 %>%
+  select(-Legacy_Features) %>%
+  tidyr::unnest(features)
+
+head(comparisons_252, 50)
+```
+
+
+
+
+$------------------------------------------------------------------------------------------------------------------------------$
+
+
+Houston Set Rescan
+
+We apply the same techniques to Houston that we showed previously with some minor adjustments.
+
+#### 1. Read in bullets from a datasource
+Houston is comprised of three groups of bullet scans which are Group1, Group2, and Group3.
+The files come originally in a .dat file type.
+
+Using stringr, dplyr, and x3ptools we can read in each group of bullet scans.
+
+* The list should recurse into directories(recursive = TRUE)
+* The directory path is prepended(full.names = TRUE)
+* The path is stored and read by converted from to .dat to .x3p
+
+
+[default parameters] -> x3p_read_dat(dat_object, delim = " ", col_names = FALSE)
+
+Each group was read in separately
+
+```{r eval=FALSE}
+
+Group1 <- tibble(path = list.files(path = "/media/Sunny/CSAFE/Houston Set Rescan/Group 1",
+                 pattern = ".dat", recursive = T,
+                 full.names = T)) %>%
+  mutate(Barrel = str_extract(path, "(Unknowns|K[A-Z])\\d{0,2}"),
+         Bullet = str_extract(path, "(Bullet [123A-Z]|U[0-9][0-9])") %>% 
+                              str_remove("Bullet"),
+         Land = str_extract(path, "Land [0-9]") %>%
+                              str_remove("Land")) %>%
+  mutate(Set = "Group_1") %>% 
+  mutate(dat = future_map(path, x3p_read_dat))
+
+```
+
+
+#### 2. Orientation
+
+Using the x3ptools package we can make the y-axis in reference to the bottom right corner(y_flip_x3p())
+Again this is to meet the current ISO standards.
+
+You can see a function called future_map from the furrr package, this is works the same at the function map from purrr but runs processes parallel.  This was more of a learning thing and should be replaced with map.
+
+
+```{r eval=FALSE}
+
+Group1 <- Group1 %>% mutate(
+  dat = dat %>% future_map(.f = function(x) x %>% 
+                             y_flip_x3p()))
+```
+
+
+#### 3. Obtain Cross Sections
+We can use the bulletxtrctr and purrr packages to obtain cross sections.
+
+[default parameters] -> x3p_crosscut_optimize(x3p_object, distance = 25, ylimits = c(50, NA), minccf = 0.9, span = 0.03, percent_missing = 50)
+
+We would like to extract the crosssection as close to the heel of the bullet as possible but what we found were many types of damages or impurities near the lower regions of the Houston scans. 
+
+For Houston, each Barrel for each group had multiple different ylimits due to it being very hard to find stable regions.
+Below is an example showing what we did for group 1.  
+
+```{r eval=FALSE}
+
+Group1 <- Group1 %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(150 ,NA)))
+
+Group1_Barrel_KA <- Group1_Barrel_KA %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(350, NA)))
+
+Group1_Barrel_KB <- Group1_Barrel_KB %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(300, NA)))
+
+Group1_Barrel_KC <- Group1_Barrel_KC %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(300, NA)))
+
+Group1_Barrel_KD <- Group1_Barrel_KD %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(300, NA)))
+
+Group1_Barrel_KE <- Group1_Barrel_KE %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(300, NA)))
+
+Group1_Barrel_Unknons <- Group1_Barrel_Unknons %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, ylimits = c(250, NA)))
+
+
+Group1 <- bind_rows(Group1, Group1_Barrel_KA, Group1_Barrel_KB, Group1_Barrel_KC, Group1_Barrel_KD, Group1_Barrel_KE, Group1_Barrel_Unknons)
+
+```
+
+#### 4. Obtain Cross Cuts
+[default parameters] -> x3p_crosscut(x3p_object, y = NULL, range = 1e-05)
+
+Now that we identified stable regions we can obtain crosscuts for each group. 
+
+```{r eval=FALSE}
+
+Group1 <- Group1 %>% 
+  mutate(CrossCut = future_map2(.x = x3p, .y = CrossSection, .f = x3p_crosscut))
+
+```
+
+
+#### 5. Obtain Grooves and correctly identify groove cut offs
+
+[default parameters] -> cc_locate_grooves(ccdata, method = "rollapply", smoothfactor = 15, adjust = 10, groove_cutoff = 400, mean_left = NULL, mean_right = NULL, mean_window = 100, return_plot = FALSE)
+
+Currently this function is still not performing to a standard we are comfortable with so we are using a interactive shiny app to correct the mistakes of this function. 
+
+```{r eval=FALSE}
+
+Group1 <- Group1 %>% 
+    mutate(Grooves = CrossCut %>% 
+             future_map(.f = cc_locate_grooves, 
+                        method = "rollapply", smoothfactor = 15, return_plot = T))
+
+```
+
+
+#### 6. Obtain the signatures
+
+Early we mentioned about manually setting the ylimit when obtaining a cross sections.  This was because we wanted to find a stable region to get the crosscuts for each scan but also because we needed our residuals to be within -10 to 10 along the y-axis.
+
+[default parameters] -> cc_get_signature(ccdata, grooves, span1 = 0.75, span2 = 0.03)
+
+```{r eval=FALSE}
+
+Group1 <- Group1 %>% 
+ mutate(Signatures = future_map2(.x = CrossCut, .y = Grooves, .f = cc_get_signature, span = 0.75, span2 = .03))
+
+```
+
+#### 7. Feature Extraction
+We are now able to perform feature extraction given two aligned signatures.
+
+[default parameters] -> extract_features_all(aligned, striae, resolution, tmpfile = NULL)
+
+
+
+
+$-------------------------------------------------------------------------------------------------------------------------$
+
+Phoenix
+
+We apply the same techniques as we did for Hamby & Houston to Phoenix.  
+Phoenix had some of the highest scan quality out of the three groups.
+
+
+#### 1. Read in bullets from a datasource
+* The files are in the form .x3p
+* The list should recurse into directories(recursive = TRUE)
+* The directory path is prepended(full.names = TRUE)
+* The path is stored and read as x3p(read_x3p)
+
+
+#### 2. Orientation
+Phoenix y-axis was already corret so no rotation or y_flip was applied
+
+
+```{r eval=FALSE}
+Phoenix <- tibble(path = list.files(path = "/media/Sunny/CSAFE/Phoenix Set",
+                                     pattern = ".x3p", recursive = T, full.names = T)) %>% 
+   mutate(Barrel = str_extract(path, "(Unknown|Gun [0-9]-[A-Z][0-9])") %>%
+            str_remove("Gun 1-"),
+          Bullet = str_extract(path, "(B[0-9]|Unknown 1-[A-Z])") %>%
+            str_remove("Unknown 1-"), 
+          Land = str_extract(path, "/L[0-9]") %>% str_remove("/L")) %>%
+   mutate(x3p = map(path, read_x3p))
+ 
+
+```
+
+
+#### 3. Obtain Cross Sections
+We can use the bulletxtrctr to obtain cross sections.
+
+[default parameters] -> x3p_crosscut_optimize(x3p_object, distance = 25, ylimits = c(50, NA), minccf = 0.9, span = 0.03, percent_missing = 50)
+
+```{r eval=FALSE}
+
+Phoenix <- Phoenix %>%
+  mutate(CrossSection = future_map_dbl(x3p, x3p_crosscut_optimize, span = 0.03))
+
+```
+
+
+#### 4. Obtain Cross Cuts
+[default parameters] -> x3p_crosscut(x3p_object, y = NULL, range = 1e-05)
+
+Now that we identified stable regions we can obtain crosscuts for each group. 
+
+```{r eval=FALSE}
+
+Phoenix <- Phoenix %>% 
+  mutate(CrossCut = map2(.x = x3p, .y = CrossSection, .f = x3p_crosscut))
+
+```
+
+
+#### 5. Obtain Grooves and correctly identify groove cut offs
+
+[default parameters] -> cc_locate_grooves(ccdata, method = "rollapply", smoothfactor = 15, adjust = 10, groove_cutoff = 400, mean_left = NULL, mean_right = NULL, mean_window = 100, return_plot = FALSE)
+
+Currently this function is still not performing to a standard we are comfortable with so we are using a interactive shiny app to correct the mistakes of this function.
+
+```{r eval=FALSE}
+
+Phoenix <- Phoenix %>% 
+    mutate(Grooves = CrossCut %>% 
+             future_map(.f = cc_locate_grooves, 
+                        method = "rollapply", smoothfactor = 15, return_plot = T))  # use plot so that the shiny app works...
+
+```
+
+
+#### 6. Obtain the signatures
+[default parameters] -> cc_get_signature(ccdata, grooves, span1 = 0.75, span2 = 0.03)
+
+```{r eval=FALSE}
+
+Phoenix <- Phoenix %>% 
+ mutate(Signatures = future_map2(.x = CrossCut, .y = Grooves, .f = cc_get_signature, span = 0.75, span2 = .03))
+
+```
+
+
+#### 7. Feature Extraction
+We are now able to perform feature extraction given two aligned signatures.
+
+* we can align two signatures(sig1, sig2) using sig_align function from bulletxtrctr, sig_align only uses each group of 2 signatures.
+* Next we find the CMS between two signatures using sig_cms_max function from bulletxtrctr.
+
+[default parameters] -> sig_cms_max(alignment_data, span = 35)
+
+* Once we have obtained are aligned and striae data we are able to extract many different features.
+* We extract the rest of these features using the extract_features_all function from bulletxtrctr
+* there is also a legacy version of the extract_features_all function
+
+[default parameters] -> extract_features_all(aligned, striae, resolution, tmpfile = NULL)
+
+
+```{r eval=FALSE}
+
+
+plan(multicore)
+
+get_sig <- function(data) {
+  map(data$Signatures, "sig")
+}
+Phoenix_Comparisons <- Phoenix_Comparisons %>%
+  mutate(sig1 = future_map(Bullet1_data, get_sig), sig2 = future_map(Bullet2_data, get_sig))
+
+Phoenix_Comparisons <- Phoenix_Comparisons %>%
+  mutate(Aligned = future_map2(sig1, sig2, ~sig_align(unlist(.x), unlist(.y)))) # Getting Aligned signatures
+# Get striae
+
+Phoenix_Comparisons <- Phoenix_Comparisons %>%
+  mutate(Striae = future_map(Aligned, sig_cms_max)) # Obtaining Striae
+
+saveRDS(select(Phoenix_Comparisons, -Bullet1_data, -Bullet2_data), file = "Phoenix_Comp.rda")
+
+
+
+Phoenix_Comparisons <- Phoenix_Comparisons %>% 
+  select(-Bullet1_data, -Bullet2_data)
+
+Phoenix_Comparisons <- Phoenix_Comparisons %>% 
+  mutate(features = future_map2(.x = Aligned, .y = Striae, .f = extract_features_all, resolution = 1.5625))#ObtainingFeatures
+
+
+
+```
+
+
+## Excluded Scans
+
+#### Hamby
+There were no missing scans.
+
+4 scans were later deemed to be unsuitable and were not used proceeding forward.
+
+- Barrel 6 Bullet 2-1
+
+- Barrel 9 Bullet 2-4
+
+- Barrel Unknown Bullet B-2
+
+- Barrel Unknown Bullet Q-4
+
+Scans that should also be removed based on the case validation paper and scan.
+
+- Barrel 1 Bullet 1-6
+
+- Barrel 2 Bullet 2-5
+
+- Barrel 3 Bullet 1-5
+
+- Barrel 8 Bullet 1-6
+
+- Barrel 8 Bullet 2-2
+
+- Barrel 8 Bullet 2-6
+
+- Barrel Unknown Bullet E-6
+
+- Barrel Unknown Bullet I-6
+
+#### Houston
+There were no missing scans and all scans were used in the study.
+
+#### Phoenix
+There is some missing data in Phoenix.
+
+We found that C8-B1-3 and U1-B3-5 are both missing.
+
+All other scans were used in the study.
+
