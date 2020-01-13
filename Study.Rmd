@@ -108,7 +108,7 @@ df2 <- tibble(path = list.files(path = file.path(data_dir, "Hamby_252"),
 #### 3. Obtain Cross Sections
 We can use the bulletxtrctr and purrr packages to obtain cross sections
 
-x3p_crosscut_optimize allows us to identify a cross section that is close to the heal of the bullet and does not suffer from defects(break-off, pitting, ... , etc)
+x3p_crosscut_optimize allows us to identify a cross section that is close to the heel of the bullet and does not suffer from defects(break-off, pitting, ... , etc)
 
 * distance: distance between crossections for comparison
 * ylimits: manually assign where to check for reliable cross-sections
