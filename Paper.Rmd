@@ -1,7 +1,7 @@
 ---
-title: "Stat_490"
+title: "Stat_490_Paper"
 author: "Andrew Maloney"
-date: "4/28/2020"
+date: "5/5/2020"
 output: html_document
 ---
 
@@ -22,7 +22,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 (Figure 1): Image of scanned Bullet with Reduced Pixels
 
+![Scan 1 Sampled](/Users/piza7/Pictures/Paper_1_samp.png)
+
+![Scan 11 Sampled](/Users/piza7/Pictures/Paper_11_samp.png)
+
+![Scan 111 Sampled](/Users/piza7/Pictures/Paper_111_samp.png)
+
 (Figure 2): Regular image of scanned Bullet
+
+![Scan 1](/Users/piza7/Pictures/Paper_1_nosamp.png)
+
+![Scan 11](/Users/piza7/Pictures/Paper_11_nosamp.png)
+
+![Scan 111](/Users/piza7/Pictures/Paper_111_nosamp.png)
 
 
 - We are now able to analyze the surface scan, by taking a cross section of the surface scan measurements.  This can be performed using the x3p_crosscut_optimize() function and then next the x3p_crosscut() function. Both of which are in the bulletxtrctr R package.  *Note: We will refer to the surface scan as a land impression from now on.* When plotting the crosscuts we are left with a side profile of the land impressions(See Figure 3). Notice the shape of the side profile, it resembles a perfect semi circle. If we think about the shape of a bullet and look at surface of the bullet outside its casing, we can take a pencil and sketch a 180 degree line along the bullet.  Which will give us the same semi circular shape.  Also notice the two hills on the left and right side of the cross sections.  These hills are known as shoulders and at the valleys of these shoulders is where the land impression starts and ends.  The shoulders contain no useful information to date and are removed. 
@@ -36,19 +48,28 @@ knitr::opts_chunk$set(echo = TRUE)
 
 [[[- Briefly compare the the down-sampled data and the non down-sampled data]]]
 
- 
+
 (Figure 4): Shoulder locations x2
 
 (Figure 5): Smoothed Impression x2
 
 (Figure 6): Shiny displaying the new groove cutoffs.
 
+![Before Cutoff](/Users/piza7/Pictures/Paper_Groove_before_Cut.png)
 
+
+![Cutoff](/Users/piza7/Pictures/Paper_Groove_Cut.png)
 
 
 - After we have identified the groove cutoffs we look for the lowest stable region for each land impression and extract the signatures(See Figure 7).  The signatures can be obtained using the cc_get_signature() function in the bulletxtrctr package. 
 
 (Figure 7): Signature Plot
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("/Users/piza7/Pictures/ResidualPlot.png")
+```
+
 
 
 - In the beginning of this paper we talked about bullets being numerically characterized, which we said were features.  One of these features is CMS, also known as consecutive matching striae.  We are now able extract the CMS and all the other features associated with bullets land impression.  We first smooth the signatures(See Figure 8), identifiy peaks and valleys of each signature(See Figure 9), and align every signature with eachother(See Figure 10). When the two signatures are aligned we are able to identify the matching peaks and valleys which coincide to the striation marks left on a bullet's surface after being fired(See figure 11). This is done by using the sig_aligned() function in the bulletxtrctr package. Notice the word "striation," that's right these are our consecutive matching striae. We can calculate the consecutive matching striae using the sig_cms_max() function in the bulletxtrctr package.
@@ -57,9 +78,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 (Figure 8): Show Smoothed Vs Non Smoothed(span = default)
 
+```{r, echo=FALSE}
+knitr::include_graphics("/Users/piza7/Pictures/smoothing.png")
+```
+
 (Figure 9): Show identified peaks and valleys
 
 (Figure 10): Show Aligned Signatures
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("/Users/piza7/Pictures/AlignedSignatures.png")
+```
+
 
 (Figure 11): cite and show actually markings associated with cms)
 
@@ -68,19 +99,230 @@ knitr::opts_chunk$set(echo = TRUE)
 - We explore the maximum number of CMS using different values for the span parameter in sig_cms_max().  We run 8 different spans and compare the Maximum number of CMS
 
 
+## Summary Statistics
+
+[1] implies same comparisons are kept for statistical summary
+
+[2] implies same comparisons are removed for statistical summary
+
+*Span of 15:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+   
+0.000   2.000   3.000   3.141   4.000  73.000 [1]
+
+0.000   2.000   3.000   2.872   4.000  34.000 [2]
+
+_____________________________________________________________________________________________
+
+*Span of 25:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   2.000   3.000   3.062   3.000  62.000 [1]
+ 
+0.000   2.000   2.000   2.827   3.000  37.000 [2]
+ 
+_____________________________________________________________________________________________
+
+*Span of 35:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   2.000   2.000   2.974   3.000  56.000 [1]
+ 
+0.000   2.000   2.000   2.776   3.000  32.000 [2]
+ 
+_____________________________________________________________________________________________
+
+*Span of 45:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  
+0.000   2.000   2.000   2.915   3.000  47.000 [1]
+ 
+0.000   2.000   2.000   2.745   3.000  37.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 55:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.832   3.000  41.000 [1]
+ 
+0.000   1.000   2.000   2.685   3.000  34.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 65:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+   
+0.000   1.000   2.000   2.698   3.000  37.000 [1]
+ 
+0.000   1.000   2.000   2.569   3.000  34.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 75:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.557   3.000  34.000 [1]
+ 
+0.000   1.000   2.000   2.442   3.000  25.000 [2]
+
+_____________________________________________________________________________________________
+
+*Span of 85:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.451   3.000  30.000 [1]
+ 
+0.000   1.000   2.000   2.349   3.000  23.000 [2]
+  
+_____________________________________________________________________________________________
+
+   
+## AUC Calculations No Samp
 
 
-... to be continued
+![Distinct](/Users/piza7/Pictures/Paper_ROC_Distinct.png)
+
+![Non Distinct](/Users/piza7/Pictures/Paper_ROC_NonDistinct.png)
+
+Span of 15: Area under the curve: 0.6414
+
+Span of 25: Area under the curve: 0.6498
+
+Span of 35: Area under the curve: 0.6487
+
+Span of 45: Area under the curve: 0.6577
+
+Span of 55: Area under the curve: 0.6611
+
+Span of 65: Area under the curve: 0.6614
+
+Span of 75: Area under the curve: 0.6606
+
+Span of 85: Area under the curve: 0.6602
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_25 %>%
+  mutate(Bullet1 = gsub(" ", "", fixed = TRUE, Bullet1), Bullet2 = gsub(" ", "", fixed = TRUE, Bullet2))
+
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(BarrelA = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\1", Bullet2))
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(BarrelB = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\1", Bullet1))
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(BulletA = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\2", Bullet2))
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(BulletB = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\2", Bullet1))
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(LandA = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\3", Bullet2))
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% 
+  mutate(LandB = gsub("([A-Z][0-9]|Unknown)-(B[0-9]{1,2}|[0-9A-Z])-([1-6])", "\\3", Bullet1))
+
+
+
+Phoenix_Comparisons_85 <- Phoenix_Comparisons_85 %>% mutate(
+  comparison = paste0(pmin(Bullet1, Bullet2)," vs ", pmax(Bullet1, Bullet2))
+)
+
+```
 
 
 
 
 
 
+```{r eval=FALSE, include=FALSE}
+Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_15 <- distinct(Phoenix_Comparisons_15, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_15$cms)
+
+
+
+```
+
+```{r eval=FALSE, include=FALSE}
+Phoenix_Comparisons_25 <- Phoenix_Comparisons_25 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_25 <- distinct(Phoenix_Comparisons_25, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_25$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_35 <- Phoenix_Comparisons_35 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_35 <- distinct(Phoenix_Comparisons_35, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_35$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_45 <- Phoenix_Comparisons_45 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_45 <- distinct(Phoenix_Comparisons_45, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_45$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_55 <- Phoenix_Comparisons_55 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_55 <- distinct(Phoenix_Comparisons_55, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_55$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_65 <- Phoenix_Comparisons_65 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_65 <- distinct(Phoenix_Comparisons_65, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_65$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_75 <- Phoenix_Comparisons_75 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_75 <- distinct(Phoenix_Comparisons_75, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_75$cms)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+
+Phoenix_Comparisons_85 <- Phoenix_Comparisons_85 %>% filter(Bullet1 != Bullet2)
+
+Phoenix_Comparisons_85 <- distinct(Phoenix_Comparisons_85, comparison, .keep_all= TRUE)
+
+summary(Phoenix_Comparisons_85$cms)
+
+```
 
 ## Code Appendix
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 #Loading Packages
 library(dplyr)
@@ -96,7 +338,7 @@ library(tidyr)
 
 ```
 
-```{r eval=FALSE}
+```{r eval=FALSE, include=FALSE}
 
 Phoenix <- tibble(path = list.files(path = "/media/Sunny/CSAFE/Phoenix Set",
                                      pattern = ".x3p", recursive = T, full.names = T)) %>% 
@@ -107,6 +349,13 @@ Phoenix <- tibble(path = list.files(path = "/media/Sunny/CSAFE/Phoenix Set",
           Land = str_extract(path, "/L[0-9]") %>% str_remove("/L")) %>%
    mutate(x3p = map(path, read_x3p))
 
+
+Phoenix <- Phoenix %>% mutate(x3p = map(x3p, sample_x3p, m = 2, mY = 2))
+
+
+image(Phoenix$x3p[[1]])
+image(Phoenix$x3p[[11]])
+image(Phoenix$x3p[[111]])
 
 ```
 
