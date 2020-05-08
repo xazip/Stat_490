@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 (Figure 1): Image of scanned Bullet with Reduced Pixels
 
-![Scan 1 Sampled](/Users/piza7/Pictures/Paper_1_samp.png)
+
 
 ![Scan 11 Sampled](/Users/piza7/Pictures/Paper_11_samp.png)
 
@@ -30,7 +30,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 (Figure 2): Regular image of scanned Bullet
 
-![Scan 1](/Users/piza7/Pictures/Paper_1_nosamp.png)
+
 
 ![Scan 11](/Users/piza7/Pictures/Paper_11_nosamp.png)
 
@@ -72,7 +72,7 @@ knitr::include_graphics("/Users/piza7/Pictures/ResidualPlot.png")
 
 
 
-- In the beginning of this paper we talked about bullets being numerically characterized, which we said were features.  One of these features is CMS, also known as consecutive matching striae.  We are now able extract the CMS and all the other features associated with bullets land impression.  We first smooth the signatures(See Figure 8), identifiy peaks and valleys of each signature(See Figure 9), and align every signature with eachother(See Figure 10). When the two signatures are aligned we are able to identify the matching peaks and valleys which coincide to the striation marks left on a bullet's surface after being fired(See figure 11). This is done by using the sig_aligned() function in the bulletxtrctr package. Notice the word "striation," that's right these are our consecutive matching striae. We can calculate the consecutive matching striae using the sig_cms_max() function in the bulletxtrctr package.
+- In the beginning of this paper we talked about bullets being numerically characterized, which we said were features.  One of these features is CMS, also known as consecutive matching striae.  We are now able to extract the CMS and all the other features associated with bullets land impression.  We first smooth the signatures(See Figure 8), identifiy peaks and valleys of each signature(See Figure 9), and align every signature with eachother(See Figure 10). When the two signatures are aligned we are able to identify the matching peaks and valleys which coincide to the striation marks left on a bullet's surface after being fired(See figure 11). This is done by using the sig_aligned() function in the bulletxtrctr package. Notice the word "striation," that's right these are our consecutive matching striae. We can calculate the consecutive matching striae using the sig_cms_max() function in the bulletxtrctr package.
 
 
 
@@ -101,91 +101,48 @@ knitr::include_graphics("/Users/piza7/Pictures/AlignedSignatures.png")
 
 ## Summary Statistics
 
-[1] implies same comparisons are kept for statistical summary
+[1*] implies same comparisons are kept for statistical summary
 
-[2] implies same comparisons are removed for statistical summary
+[2*] implies same comparisons are removed for statistical summary
 
-*Span of 15:*
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
-   
-0.000   2.000   3.000   3.141   4.000  73.000 [1]
+```{r}
 
-0.000   2.000   3.000   2.872   4.000  34.000 [2]
 
-_____________________________________________________________________________________________
+library(readxl)
+Same_Comparisons_Kept <- read.csv("Book1.csv", header = T)
 
-*Span of 25:*
+Same_Comparisons_Removed <- read.csv("book2.csv", header = T)
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   
-0.000   2.000   3.000   3.062   3.000  62.000 [1]
- 
-0.000   2.000   2.000   2.827   3.000  37.000 [2]
- 
-_____________________________________________________________________________________________
 
-*Span of 35:*
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   
-0.000   2.000   2.000   2.974   3.000  56.000 [1]
- 
-0.000   2.000   2.000   2.776   3.000  32.000 [2]
- 
-_____________________________________________________________________________________________
+```
 
-*Span of 45:*
+### Same_Comparisons_Kept
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  
-0.000   2.000   2.000   2.915   3.000  47.000 [1]
- 
-0.000   2.000   2.000   2.745   3.000  37.000 [2]
-  
-_____________________________________________________________________________________________
+```{r}
 
-*Span of 55:*
+head(Same_Comparisons_Kept, 8)
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   
-0.000   1.000   2.000   2.832   3.000  41.000 [1]
- 
-0.000   1.000   2.000   2.685   3.000  34.000 [2]
-  
-_____________________________________________________________________________________________
 
-*Span of 65:*
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
-   
-0.000   1.000   2.000   2.698   3.000  37.000 [1]
- 
-0.000   1.000   2.000   2.569   3.000  34.000 [2]
-  
-_____________________________________________________________________________________________
+```
 
-*Span of 75:*
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   
-0.000   1.000   2.000   2.557   3.000  34.000 [1]
- 
-0.000   1.000   2.000   2.442   3.000  25.000 [2]
+### Same_Comparisons Removed
 
-_____________________________________________________________________________________________
+```{r}
 
-*Span of 85:*
+head(Same_Comparisons_Removed, 8)
 
-Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   
-0.000   1.000   2.000   2.451   3.000  30.000 [1]
- 
-0.000   1.000   2.000   2.349   3.000  23.000 [2]
-  
-_____________________________________________________________________________________________
 
-   
+```
+
+
+- Looking at the CMS statistics for Same_Comparisons_Removed the lower values of span have higher mean and max statistics. The distribution seems to be skewed to the right. Now that we have corrected the resolution the CMS statistics are not the same as last time.  We tended to see the highest average results for spans of 55 to 75.  These results suggest we perform less smoothing. 
+
+
+
 ## AUC Calculations No Samp
 
 
@@ -209,32 +166,44 @@ Span of 75: Area under the curve: 0.6606
 
 Span of 85: Area under the curve: 0.6602
 
+
+- Notice, for all span values we see slight separability.  The CMS feature does seem to explain some of the models ability to distinquish between Matchs and Non-matches.
+
 ## Model Summary RF
 
 
 *90 10 split*
 
-         Reference
+  Reference
+         
 Prediction FALSE TRUE
+
      FALSE  3729  103
+     
      TRUE     16   72
 
 
 
 *80 20 split*
 
-          Reference
+   Reference
+          
 Prediction FALSE TRUE
+
      FALSE  7357  187
+     
      TRUE    133  163
 
 
 *70 30 split*
 
-          Reference
+   Reference
+          
 Prediction FALSE  TRUE
-     FALSE 11178   311
-     TRUE     57   214
+
+    FALSE 11178   311
+     
+    TRUE     57   214
 
 ```{r eval=FALSE, include=FALSE}
 
@@ -261,11 +230,6 @@ Phoenix_Comparisons_85 <- Phoenix_Comparisons_85 %>% mutate(
 )
 
 ```
-
-
-
-
-
 
 ```{r eval=FALSE, include=FALSE}
 Phoenix_Comparisons_15 <- Phoenix_Comparisons_15 %>% filter(Bullet1 != Bullet2)
@@ -549,3 +513,85 @@ Phoenix_Comparisons <- Phoenix_Comparisons_15 %>%
   tidyr::unnest(features)
 
 ```
+
+
+*Span of 15:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+   
+0.000   2.000   3.000   3.141   4.000  73.000 [1*]
+
+0.000   2.000   3.000   2.872   4.000  34.000 [2*]
+
+_____________________________________________________________________________________________
+
+*Span of 25:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   2.000   3.000   3.062   3.000  62.000 [1]
+ 
+0.000   2.000   2.000   2.827   3.000  37.000 [2]
+ 
+_____________________________________________________________________________________________
+
+*Span of 35:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   2.000   2.000   2.974   3.000  56.000 [1]
+ 
+0.000   2.000   2.000   2.776   3.000  32.000 [2]
+ 
+_____________________________________________________________________________________________
+
+*Span of 45:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  
+0.000   2.000   2.000   2.915   3.000  47.000 [1]
+ 
+0.000   2.000   2.000   2.745   3.000  37.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 55:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.832   3.000  41.000 [1]
+ 
+0.000   1.000   2.000   2.685   3.000  34.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 65:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
+   
+0.000   1.000   2.000   2.698   3.000  37.000 [1]
+ 
+0.000   1.000   2.000   2.569   3.000  34.000 [2]
+  
+_____________________________________________________________________________________________
+
+*Span of 75:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.557   3.000  34.000 [1]
+ 
+0.000   1.000   2.000   2.442   3.000  25.000 [2]
+
+_____________________________________________________________________________________________
+
+*Span of 85:*
+
+Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   
+0.000   1.000   2.000   2.451   3.000  30.000 [1]
+ 
+0.000   1.000   2.000   2.349   3.000  23.000 [2]
+  
+_____________________________________________________________________________________________
+
