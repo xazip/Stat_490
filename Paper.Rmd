@@ -101,16 +101,12 @@ knitr::include_graphics("/Users/piza7/Pictures/AlignedSignatures.png")
 
 ## Summary Statistics
 
-[1*] implies same comparisons are kept for statistical summary
 
-[2*] implies same comparisons are removed for statistical summary
-
-
-```{r}
+```{r include=FALSE}
 
 
 library(readxl)
-Same_Comparisons_Kept <- read.csv("Book1.csv", header = T)
+Same_Comparisons_Removed_Samp <- read_excel("Samp_Book.xlsx")
 
 Same_Comparisons_Removed <- read.csv("book2.csv", header = T)
 
@@ -118,37 +114,39 @@ Same_Comparisons_Removed <- read.csv("book2.csv", header = T)
 
 ```
 
-### Same_Comparisons_Kept
-
-```{r}
-
-head(Same_Comparisons_Kept, 8)
-
-
-
-```
-
-
-### Same_Comparisons Removed
+### Same_Comparisons_Removed using dataframe where no sampling was performed
 
 ```{r}
 
 head(Same_Comparisons_Removed, 8)
 
 
+
 ```
 
 
-- Looking at the CMS statistics for Same_Comparisons_Removed the lower values of span have higher mean and max statistics. The distribution seems to be skewed to the right. Now that we have corrected the resolution the CMS statistics are not the same as last time.  We tended to see the highest average results for spans of 55 to 75.  These results suggest we perform less smoothing. 
+### Same_Comparisons Removed using dataframe where sampling was performed
+
+```{r}
+
+head(Same_Comparisons_Removed_Samp, 8)
+
+
+```
+
+
+- We first removed Same Land Comparisons from both are nonsampled and sampled dataframes.  This is to ensure we remove bullet land comparisons we know are already matches.  We can think of these as outliers and they could have negative effects when it comes to our future random forest model's performance when distinguishing the majority and minority class values.
+
+- Looking at the CMS statistics for Same_Comparisons_Removed the lower values of span have higher mean and max statistics. Looking at the CMS statistics for Same_Comparisons_Removed_Samp the lower values of the span have higher mean and max statistics.  Comparing the CMS values for bullet land scans that did not have sampling performed with bullet land scans that did have sampling performed we see that sampling tends to lower the overall mean cms value.  Looking at the Max CMS values for bullet land scans where sampling was performed we see higher CMS values at the lower values of span compared to the bullet land scans that did not have sampling performed on them.   These results suggest we perform less smoothing. 
 
 
 
-## AUC Calculations No Samp
+Class Seperatability based on CMS span values
 
 
 ![Distinct](/Users/piza7/Pictures/Paper_ROC_Distinct.png)
 
-![Non Distinct](/Users/piza7/Pictures/Paper_ROC_NonDistinct.png)
+## AUC Scores for dataframe where sampling was not performed
 
 Span of 15: Area under the curve: 0.6414
 
@@ -167,43 +165,93 @@ Span of 75: Area under the curve: 0.6606
 Span of 85: Area under the curve: 0.6602
 
 
-- Notice, for all span values we see slight separability.  The CMS feature does seem to explain some of the models ability to distinquish between Matchs and Non-matches.
+## AUC Scores for dataframe where sampling was performed
+
+Span of 15: Area under the curve: 0.6496
+
+Span of 25: Area under the curve: 0.6623
+
+Span of 35: Area under the curve: 0.6587
+
+Span of 45: Area under the curve: 0.6519
+
+Span of 55: Area under the curve: 0.6537
+
+Span of 65: Area under the curve: 0.6487
+
+Span of 75: Area under the curve: 0.644
+
+Span of 85: Area under the curve: 0.6378
+
+
+
+- Notice, for all span values we see slight separability.  The CMS feature does seem to explain some of the models ability to distinquish between Matchs and Non-matches.  All AUC scores were in the mid 60's.  AUC scores differ between bullet land scans where sampling was not performed and bullet land scans where sampling was peformed.  For bullets where sampling was not performed we see a span of 55 having the highest AUC value and for bullets where sampling was performed we see a span of 25 having the highest AUC value. 
 
 ## Model Summary RF
 
-
-*90 10 split*
-
-  Reference
-         
-Prediction FALSE TRUE
-
-     FALSE  3729  103
-     
-     TRUE     16   72
+Random Forest
 
 
+#### Span 55 where FALSE is the positive class value
 
-*80 20 split*
+#### Same Comparisons kept
 
-   Reference
+-----------Reference------------
           
 Prediction FALSE TRUE
 
-     FALSE  7357  187
+    FALSE  7357  187
      
-     TRUE    133  163
-
-
-*70 30 split*
-
-   Reference
-          
-Prediction FALSE  TRUE
-
-    FALSE 11178   311
+    TRUE    133  163
      
-    TRUE     57   214
+     
+#### Span 55 where FALSE is the positive class value
+
+#### Same comparisons removed
+
+
+-----------Reference------------
+   
+Prediction FALSE TRUE
+
+    FALSE  3747  104
+     
+    TRUE      1   48
+                                          
+Accuracy : 0.9731          
+
+
+
+#### Span 55 sample run where FALSE is the positive class value
+
+#### Same comparisons kept
+
+-----------Reference------------
+   
+Prediction FALSE TRUE 
+
+    FALSE  7338  205
+     
+    TRUE    145  152
+
+
+     
+#### Span 55 sample run where FALSE is the positive class value
+
+#### Same comparisons removed
+
+-----------Reference-------------
+   
+Prediction FALSE TRUE
+
+    FALSE  3738  121
+     
+    TRUE      5   36
+                                         
+
+Accuracy : 0.9677
+               
+               
 
 ```{r eval=FALSE, include=FALSE}
 
